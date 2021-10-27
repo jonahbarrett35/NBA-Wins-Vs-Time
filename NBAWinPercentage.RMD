@@ -1,0 +1,67 @@
+---
+title: "Franchise Win Percentage Per Season"
+author: "Jonah Barrett"
+date: "8/17/2021"
+output: 
+    html_document:
+        theme: cerulean
+params:
+    Franchise: IND
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(lubridate)
+library(rstudioapi)
+library(rebus)
+library(rmarkdown)
+library(shiny)
+library(knitr)
+library(ggvis)
+```
+
+## `r params$Franchise` Win Percentage Per Season
+
+`r params$Franchise`'s Win Percentage through the years (including past team names)!
+
+```{r data, message=FALSE}
+read_csv("../data/NBA W_L.csv") -> NBAWL_tbl
+NBAWL_tbl <- NBAWL_tbl %>%
+    mutate(Season = str_remove_all(Season, "-" %R% DGT %R% DGT))
+TmWL_tbl <- NBAWL_tbl %>%
+    filter(Tm == params$Franchise) %>%
+    mutate(ID = factor(ID), Season = as.numeric(Season))
+
+ggplot(TmWL_tbl, aes(Season, `W/L%`, color = ID )) +
+    geom_line() +
+    scale_x_continuous("Season") +
+    scale_y_continuous("Win Percentage") +
+    labs(title =  "Win Percentage over time") +
+    geom_hline(yintercept = 0.5)
+```
+
+``` {r table}
+library(knitr)
+NBAWL_tbl_alltime <- NBAWL_tbl %>%
+    group_by(ID) %>%
+    summarize(`All Time W/L%` = sum(`W`)/(sum(`L`) + sum(`W`)), GP = sum(`W`)+sum(`L`)) %>%
+    arrange(desc(`All Time W/L%`)) %>%
+    filter(GP > 1000)
+kable(NBAWL_tbl_alltime, col.names = c("Team","All Time W/L%", "Games Played"))
+```
+
+```{r by coaches}
+TmWL_tbl <- TmWL_tbl %>%
+    mutate(Coaches = str_remove_all(Coaches, OPEN_PAREN %R% DGT %R% optional(DGT) %R% "-" %R% DGT %R% optional(DGT) %R% CLOSE_PAREN))
+    
+ggplot(TmWL_tbl, aes(Season, `W/L%`, color = Coaches )) +
+    geom_line() +
+    scale_x_continuous("Season") +
+    scale_y_continuous("Win Percentage") +
+    labs(title =  "Win Percentage over time", color = "Coaches") +
+    geom_hline(yintercept = 0.5) +
+    theme(legend.key.size = unit(0.32,"cm")) +
+    geom_point()
+```
+
